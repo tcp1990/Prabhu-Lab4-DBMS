@@ -160,3 +160,61 @@ INSERT INTO rating VALUES(15,115,1);
 INSERT INTO rating VALUES(16,116,0);
 
 /*3)	Display the total number of customers based on gender who have placed orders of worth at least Rs.3000*/
+SELECT COUNT(DISTINCT customer.CUS_ID) AS TotalNoOfCustomers, customer.CUS_GENDER as Gender FROM customer
+INNER JOIN `order` ON `order`.CUS_ID = customer.CUS_ID
+WHERE `order`.ORD_AMOUNT >= 3000
+GROUP BY customer.CUS_GENDER;
+
+/*4)	Display all the orders along with product name ordered by a customer having Customer_Id=2*/
+SELECT `order`.*, product.PRO_NAME AS 'Product Name' FROM `order`
+INNER JOIN supplier_pricing ON supplier_pricing.PRICING_ID = `order`.PRICING_ID
+INNER JOIN product as product ON product.PRO_ID = supplier_pricing.PRO_ID
+WHERE `order`.CUS_ID = 2;
+
+/*5)	Display the Supplier details who can supply more than one product.*/
+SELECT supplier.*  FROM supplier_pricing
+INNER JOIN supplier ON supplier.SUPP_ID = supplier_pricing.SUPP_ID
+GROUP BY supplier_pricing.SUPP_ID 
+HAVING COUNT(DISTINCT PRO_ID) > 1;
+
+/*6)	Find the least expensive product from each category and 
+print the table with category id, name, product name and price of the product*/
+SELECT category.CAT_ID AS 'Category ID', CAT_NAME AS Name, product.PRO_NAME as 'Product Name', MIN(supplier_pricing.SUPP_PRICE) AS 'Price'
+FROM supplier_pricing
+JOIN product ON product.PRO_ID=supplier_pricing.PRO_ID 
+JOIN category ON category.CAT_ID=product.CAT_ID 
+GROUP BY product.CAT_ID;
+ 
+/*7)	Display the Id and Name of the Product ordered after “2021-10-05”.*/
+SELECT product.PRO_ID AS Id, product.PRO_NAME AS Name FROM `order`
+INNER JOIN supplier_pricing ON supplier_pricing.PRICING_ID = `order`.PRICING_ID
+INNER JOIN product ON product.PRO_ID = supplier_pricing.PRO_ID
+WHERE ORD_DATE > '2021-10-05';
+
+/*8)	Display customer name and gender whose names start or end with character 'A'.*/
+
+SELECT cus_name AS 'Customer Name',cus_gender AS Gender FROM customer
+WHERE cus_name LIKE 'A%' OR cus_name LIKE '%A';
+
+/*9)	Create a stored procedure to display supplier id, name, rating and Type_of_Service. 
+For Type_of_Service, If rating =5, print “Excellent Service”,If rating >4 print “Good Service”, 
+If rating >2 print “Average Service” else print “Poor Service”.*/
+DELIMITER $$
+CREATE PROCEDURE `supplier_ratings`()
+BEGIN
+SELECT sup.SUPP_ID AS 'supplier id' , sup.SUPP_NAME AS 'name' , ROUND(AVG(rat_ratstars),2) AS 'rating',
+CASE 
+    WHEN AVG(rat_ratstars) = 5 THEN 'Excellent Service'
+	WHEN AVG(rat_ratstars) > 4 THEN 'Good Service'
+	WHEN AVG(rat_ratstars) > 2 THEN 'Average Service'
+ELSE 'Poor Service'
+END AS Type_of_Service
+FROM supplier sup, `order` ord, supplier_pricing sp, rating rat
+WHERE ord.ORD_ID = rat.ORD_ID AND sup.SUPP_ID = sp.SUPP_ID
+AND sp.PRICING_ID = ord.PRICING_ID
+GROUP BY sup.SUPP_ID ORDER BY sup.SUPP_ID;
+END$$
+
+DELIMITER ;
+;
+call supplier_ratings();
